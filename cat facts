@@ -1,0 +1,65 @@
+import requests
+import sqlite3
+from sqlite3 import Error
+
+api_url = "https://cat-fact.herokuapp.com/facts"
+response = requests.get(api_url)
+cat_facts = response.json()
+
+# SQLite veritabanı oluşturma
+def create_connection(db_file):
+    """ SQLite veritabanına bağlantı oluşturma """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        return conn
+    except Error as e:
+        print(e)
+    return conn
+
+def create_table(conn):
+    try:
+        sql_create_cat_facts_table = """
+        CREATE TABLE IF NOT EXISTS cat_facts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fact_id TEXT NOT NULL,
+            fact_text TEXT NOT NULL
+        );"""
+        cursor = conn.cursor()
+        cursor.execute(sql_create_cat_facts_table)
+    except Error as e:
+        print(e)
+
+def insert_fact(conn, fact):
+    sql_insert_fact = """
+    INSERT INTO cat_facts(fact_id, fact_text)
+    VALUES(?, ?)
+    """
+    cursor = conn.cursor()
+    cursor.execute(sql_insert_fact, fact)
+    conn.commit()
+
+def main():
+    database = "cat_facts.db"
+
+    conn = create_connection(database)
+
+    # Tablo oluşturma
+    if conn is not None:
+        create_table(conn)
+    else:
+        print("Veritabanına bağlantı oluşturulamadı.")
+
+    for fact in cat_facts:
+        fact_data = (fact['_id'], fact['text'])
+        insert_fact(conn, fact_data)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cat_facts")
+    rows = cursor.fetchall()
+    for row in rows:
+        print(f"ID: {row[0]}, Fact ID: {row[1]}, Fact: {row[2]}")
+
+    conn.close()
+
+if __name__ == "__main__":
+    main()
